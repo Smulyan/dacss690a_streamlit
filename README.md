@@ -1,7 +1,7 @@
 
-# Airbnb Rental Price Prediction API
+# Time to Retraction Prediction API
 
-This is a Flask-based API that predicts Airbnb rental prices based on several factors like bedrooms, bathrooms, accommodation capacity, and neighborhood. The API has two main endpoints:
+This is a Flask-based API that predicts Retraction times for publications based on Subject, Country of the authors' institutional affiliation, and whether the publicaiton was paywalled. The API has two main endpoints:
 - `/reload`: Reloads the data and trains the model.
 - `/predict`: Predicts the rental price for a given listing.
 
@@ -9,16 +9,7 @@ This is a Flask-based API that predicts Airbnb rental prices based on several fa
 
 ### Data Source
 
-The data used for this project comes from the [Inside Airbnb dataset](https://insideairbnb.com/get-the-data/), which provides detailed information about Airbnb listings in various cities. For this particular app, the data for Boston, MA is used.
-
-The dataset includes important features such as:
-- **Price**: The rental price of the listing.
-- **Bedrooms**: The number of bedrooms in the listing.
-- **Bathrooms**: The number of bathrooms in the listing.
-- **Accommodates**: The maximum number of guests the listing can accommodate.
-- **Neighbourhood**: The neighborhood where the listing is located.
-
-The full dataset can be accessed and downloaded from the Inside Airbnb website at [Inside Airbnb - Get the Data](https://insideairbnb.com/get-the-data/).
+The data used for this project comes from the [Retraction Watch dataset](https://gitlab.com/crossref/retraction-watch-data), which contains information on retracted publications.
 
 ### Prediction Process
 
