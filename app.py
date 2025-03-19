@@ -61,7 +61,7 @@ with app.app_context():
 
 def preprocess_data(df):
     #drop all columns except indicated
-    retractions = retractions[['Subject', 'Country', 'RetractionDate','OriginalPaperDate', 'RetractionNature', 'Paywalled']]
+    retractions = df[['Subject', 'Country', 'RetractionDate','OriginalPaperDate', 'RetractionNature', 'Paywalled']]
 
     #Calculate length of time between publication and retraction
 
