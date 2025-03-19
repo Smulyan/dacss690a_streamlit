@@ -150,7 +150,7 @@ def reload_data():
 
     # Step 5: Insert data into the database
 
-    for _, row in retractions.iterrows():
+    for _, row in df.iterrows():
         new_retraction = Retraction(
             DaysToRetraction=row['DaysToRetraction'],
             Subject_BT=row['Subject_B/T'],
@@ -177,20 +177,20 @@ def reload_data():
     db.session.commit()
 
     # Step 6: Train model
-    X = retractions.drop(columns='DaysToRetraction')
-    y = retractions['DaysToRetraction']
+    X = df.drop(columns='DaysToRetraction')
+    y = df['DaysToRetraction']
     model = LinearRegression()
     model.fit(X, y)
 
     # Step 6: Generate summary statistics
     summary = {
-        'total_retractions': len(retractions),
-        'average_days_to_retraction': retractions['DaysToRetraction'].mean(),
-        'min_days_to_retraction': retractions['DaysToRetraction'].min(),
-        'max_days_to_retraction': retractions['DaysToRetraction'].max(),
-        'most_common_subjects': retractions[[col for col in retractions.columns if col.startswith('Subject_')]].sum().nlargest(5).to_dict(),
-        'most_common_countries': retractions[[col for col in retractions.columns if col.startswith('Country_')]].sum().nlargest(5).to_dict(),
-        'paywalled_distribution': retractions['Paywalled'].value_counts().to_dict()
+        'total_retractions': len(df),
+        'average_days_to_retraction': df['DaysToRetraction'].mean(),
+        'min_days_to_retraction': df['DaysToRetraction'].min(),
+        'max_days_to_retraction': df['DaysToRetraction'].max(),
+        'most_common_subjects': df[[col for col in retractions.columns if col.startswith('Subject_')]].sum().nlargest(5).to_dict(),
+        'most_common_countries': df[[col for col in retractions.columns if col.startswith('Country_')]].sum().nlargest(5).to_dict(),
+        'paywalled_distribution': df['Paywalled'].value_counts().to_dict()
     }
 
     return jsonify(summary)
