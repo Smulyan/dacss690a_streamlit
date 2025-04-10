@@ -13,18 +13,7 @@ from io import StringIO
 import re
 
 
-app = Flask(__name__)
 
-# Swagger config
-app.config['SWAGGER'] = {
-    'title': 'Retraction Time Prediction',
-    'uiversion': 3
-}
-swagger = Swagger(app)
-
-# SQLite DB setup
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///retractions.db'
-db = SQLAlchemy(app)
 
 #define the database model
 class Retraction(db.Model):
