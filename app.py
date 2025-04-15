@@ -1,5 +1,3 @@
-from flask import Flask, jsonify, request
-from flask_sqlalchemy import SQLAlchemy
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
@@ -8,45 +6,10 @@ import numpy as np
 import requests
 import gzip
 from io import BytesIO
-from flasgger import Swagger
 from io import StringIO
 import re
+import streamlit as st
 
-
-
-
-#define the database model
-class Retraction(db.Model):
-    id = db.Column(db.Integer, primary_key=True)  # Unique ID for each record
-    DaysToRetraction = db.Column(db.Integer, nullable=False)
-
-    # Dummy variables for subject areas
-    Subject_BT = db.Column(db.Integer, nullable=False, default=0)
-    Subject_BLS = db.Column(db.Integer, nullable=False, default=0)
-    Subject_ENV = db.Column(db.Integer, nullable=False, default=0)
-    Subject_HSC = db.Column(db.Integer, nullable=False, default=0)
-    Subject_HUM = db.Column(db.Integer, nullable=False, default=0)
-    Subject_PHY = db.Column(db.Integer, nullable=False, default=0)
-    Subject_SOC = db.Column(db.Integer, nullable=False, default=0)
-
-    # Dummy variables for countries
-    Country_China = db.Column(db.Integer, nullable=False, default=0)
-    Country_United_States = db.Column(db.Integer, nullable=False, default=0)
-    Country_India = db.Column(db.Integer, nullable=False, default=0)
-    Country_Russia = db.Column(db.Integer, nullable=False, default=0)
-    Country_Iran = db.Column(db.Integer, nullable=False, default=0)
-    Country_United_Kingdom = db.Column(db.Integer, nullable=False, default=0)
-    Country_Japan = db.Column(db.Integer, nullable=False, default=0)
-    Country_Saudi_Arabia = db.Column(db.Integer, nullable=False, default=0)
-    Country_South_Korea = db.Column(db.Integer, nullable=False, default=0)
-    Country_Germany = db.Column(db.Integer, nullable=False, default=0)
-
-    #Paywall status
-    Paywalled = db.Column(db.Integer, nullable=False, default=0)
-
-# Create the database
-with app.app_context():
-    db.create_all()
 
 def preprocess_data(df):
     #drop all columns except indicated
@@ -109,19 +72,12 @@ def preprocess_data(df):
 
     return retractions
 
-# Global variables for model and encoder
-model = None
 
-@app.route('/reload', methods=['POST'])
-def reload_data():
-    '''
-    Reload data from the Retraction Watch dataset, clear the database, load new data, and return summary stats
-    ---
-    responses:
-      200:
-        description: Summary statistics of reloaded data
-    '''
-    global model
+
+
+
+@st.cache_data
+def load_data():
 
     # Step 1: Download and decompress data
     url = "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv"
@@ -129,49 +85,18 @@ def reload_data():
 
     # Step 2: Load data into pandas
     rw_file = StringIO(response.text)  # Convert text response to a file-like object
-    retractions = pd.read_csv(rw_file)
+    raw_df = pd.read_csv(rw_file)
 
-    # Step 3: Clear the database
-    db.session.query(Retraction).delete()
+    #Step 3: Process/Clean data
+    df = preprocess_data(raw_df)
 
-    #Step 4: Process/Clean data
-    df = preprocess_data(retractions)
-
-    # Step 5: Insert data into the database
-
-    for _, row in df.iterrows():
-        new_retraction = Retraction(
-            DaysToRetraction=row['DaysToRetraction'],
-            Subject_BT=row['Subject_B/T'],
-            Subject_BLS=row['Subject_BLS'],
-            Subject_ENV=row['Subject_ENV'],
-            Subject_HSC=row['Subject_HSC'],
-            Subject_HUM=row['Subject_HUM'],
-            Subject_PHY=row['Subject_PHY'],
-            Subject_SOC=row['Subject_SOC'],
-            Country_China=row['Country_China'],
-            Country_United_States=row['Country_United States'],
-            Country_India=row['Country_India'],
-            Country_Russia=row['Country_Russia'],
-            Country_Iran=row['Country_Iran'],
-            Country_United_Kingdom=row['Country_United Kingdom'],
-            Country_Japan=row['Country_Japan'],
-            Country_Saudi_Arabia=row['Country_Saudi Arabia'],
-            Country_South_Korea=row['Country_South Korea'],
-            Country_Germany=row['Country_Germany'],
-            Paywalled=row['Paywalled']
-        )
-        db.session.add(new_retraction)
-
-    db.session.commit()
-
-    # Step 6: Train model
+    # Step 4: Train regression model
     X = df.drop(columns='DaysToRetraction')
     y = df['DaysToRetraction']
     model = LinearRegression()
     model.fit(X, y)
 
-    # Step 6: Generate summary statistics
+    # Step 5: Generate summary statistics
     summary = {
         'total_retractions': len(df),
         'average_days_to_retraction': df['DaysToRetraction'].mean(),
@@ -182,35 +107,11 @@ def reload_data():
         'paywalled_distribution': df['Paywalled'].value_counts().to_dict()
     }
 
-    return jsonify(summary)
+    return df, model, summary
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    '''
-    Predict the retraction time for a publiction
-    ---
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            subject:
-              type: string
-              description: "The publication's subject category -  B/T (Busines and technology), BLS (Biology and Life Sciences), ENV (Environmental Sciences), HSC (Health Sciences), HUM (Humanities), PHY (Physical Sciences), or SOC (Social Sciences)"
-            country:
-              type: string
-              description: "The country of authors' affilated institution - China, United States, India, Russia, Iran, United Kingdom, Japan, Saudi Arabia, South Korea, or Germany "
-            paywalled:
-              type: string
-              enum: ["Yes", "No"]
-              description: "Indicates if the publication was behind a paywall ('Yes' or 'No')"
-    responses:
-      200:
-        description: Predicted days to retraction
-    '''
-    global model  # Ensure that the model is available for prediction
+
+def predict_ui():
+    st.subheader("Predict Days to Retraction")
 
     # Define the list of valid subjects
     valid_subjects = [
@@ -222,52 +123,34 @@ def predict():
         "China", "United States", "India", "Russia", "Iran", "United Kingdom", "Japan", "Saudi Arabia", "South Korea", "Germany"
     ]
 
-    # Check if the model is initialized
-    if model is None:
-        return jsonify({"error": "The data has not been loaded. Please refresh the data by calling the '/reload' endpoint first."}), 400
+    with st.form("prediction_form"):
+        subject = st.selectbox("Subject Area", valid_subjects)
+        country = st.selectbox("Country", valid_countries)
+        paywalled = st.radio("Paywalled?", ["Yes", "No"])
 
-    data = request.json
-    try:
-        # Extract inputs
-        subject = data.get('subject')
-        country = data.get('country')
-        paywalled = data.get('paywalled')
+        submitted = st.form_submit_button("Predict")
 
-        # Validate inputs
-        if subject not in valid_subjects:
-            return jsonify({"error": f"Invalid subject. Choose from: {', '.join(valid_subjects)}"}), 400
-        if country not in valid_countries:
-            return jsonify({"error": f"Invalid country. Choose from: {', '.join(valid_countries)}"}), 400
-        if paywalled not in ["Yes", "No"]:
-            return jsonify({"error": "Paywalled must be 'Yes' or 'No'"}), 400
+    if submitted:
+        try:
+            # Create input template with 0s for all model features
+            input_data = {col: 0 for col in model.feature_names_in_}
 
-        # Prepare input data (match model feature structure)
-        input_data = {col: 0 for col in model.feature_names_in_}
+            subject_col = f"Subject_{subject}"
+            country_col = f"Country_{country}"
 
-        # Set the correct subject and country variables
-        subject_col = f"Subject_{subject}"
-        country_col = f"Country_{country}"
+            if subject_col in input_data:
+                input_data[subject_col] = 1
+            if country_col in input_data:
+                input_data[country_col] = 1
 
-        if subject_col in input_data:
-            input_data[subject_col] = 1
-        if country_col in input_data:
-            input_data[country_col] = 1
+            input_data["Paywalled"] = 1 if paywalled == "Yes" else 0
 
-        # Convert paywalled to binary
-        input_data["Paywalled"] = 1 if str(paywalled).strip().lower() == "yes" else 0
+            # Convert to DataFrame
+            input_df = pd.DataFrame([input_data])
 
-        # Convert dictionary to NumPy array
-        input_df = pd.DataFrame([input_data])
-        input_array = input_df.to_numpy()
+            # Make prediction
+            predicted_days = model.predict(input_df)[0]
+            st.success(f"📅 Predicted Days to Retraction: **{int(predicted_days)} days**")
 
-        # Predict days to retraction
-        predicted_days = model.predict(input_array)[0]
-
-        return jsonify({"predicted_days_to_retraction": predicted_days})
-
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True)
+        except Exception as e:
+            st.error(f"Prediction failed: {e}")
