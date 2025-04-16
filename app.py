@@ -79,6 +79,7 @@ def preprocess_data(df):
 
 @st.cache_data
 def load_data():
+    global model
 
     # Step 1: Download and decompress data
     url = "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv"
@@ -195,10 +196,10 @@ def viz_ui(df):
 st.set_page_config(layout="wide")
 st.title("Retraction Watch Data Explorer")
 
-data = load_data()
+df, model, summary = load_data()
 
 tab1, tab2 = st.tabs(["Prediction", "Visualization"])
 with tab1:
     predict_ui()
 with tab2:
-    viz_ui(data)
+    viz_ui(df)
