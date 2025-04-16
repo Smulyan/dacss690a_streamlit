@@ -1,14 +1,13 @@
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder
 import pandas as pd
 import numpy as np
 import requests
-import gzip
-from io import BytesIO
 from io import StringIO
 import re
 import streamlit as st
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 #global model variable
 model = None
@@ -160,3 +159,46 @@ def predict_ui():
 
         except Exception as e:
             st.error(f"Prediction failed: {e}")
+
+
+def viz_ui(df):
+    st.subheader("Visualize Retraction Time")
+
+    subject_cols = [col for col in df.columns if col.startswith("Subject_")]
+    country_cols = [col for col in df.columns if col.startswith("Country_")]
+
+    selected_subjects = st.multiselect("Subjects", subject_cols, default=subject_cols)
+    selected_countries = st.multiselect("Countries", country_cols, default=country_cols)
+    paywall_option = st.selectbox("Paywall Status", ["All", "Yes", "No"])
+
+    filtered = df[
+        (df[selected_subjects].sum(axis=1) > 0) &
+        (df[selected_countries].sum(axis=1) > 0)
+        ]
+    if paywall_option != "All":
+        filtered = filtered[filtered["Paywalled"] == (1 if paywall_option == "Yes" else 0)]
+
+    st.write(f"Filtered rows: {len(filtered)}")
+
+    plot_type = st.radio("Plot Type", ["Boxplot", "Histogram"])
+
+    fig, ax = plt.subplots()
+    if plot_type == "Boxplot":
+        sns.boxplot(data=filtered, y="DaysToRetraction", ax=ax)
+    else:
+        sns.histplot(data=filtered, x="DaysToRetraction", bins=30, kde=True, ax=ax)
+
+    st.pyplot(fig)
+
+
+#main streamlit app
+st.set_page_config(layout="wide")
+st.title("Retraction Watch Data Explorer")
+
+data = load_data()
+
+tab1, tab2 = st.tabs(["Prediction", "Visualization"])
+with tab1:
+    predict_ui(data)
+with tab2:
+    viz_ui(data)

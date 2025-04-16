@@ -1,4 +1,6 @@
-scikit-learn==1.5.2
-pandas==2.2.3
-requests==2.26.0
+scikit-learn
+pandas
+requests
 streamlit
+seaborn
+matplotlib
