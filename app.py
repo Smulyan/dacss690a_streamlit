@@ -10,6 +10,8 @@ from io import StringIO
 import re
 import streamlit as st
 
+#global model variable
+model = None
 
 def preprocess_data(df):
     #drop all columns except indicated
@@ -102,8 +104,8 @@ def load_data():
         'average_days_to_retraction': df['DaysToRetraction'].mean(),
         'min_days_to_retraction': df['DaysToRetraction'].min(),
         'max_days_to_retraction': df['DaysToRetraction'].max(),
-        'most_common_subjects': df[[col for col in retractions.columns if col.startswith('Subject_')]].sum().nlargest(5).to_dict(),
-        'most_common_countries': df[[col for col in retractions.columns if col.startswith('Country_')]].sum().nlargest(5).to_dict(),
+        'most_common_subjects': df[[col for col in df.columns if col.startswith('Subject_')]].sum().nlargest(5).to_dict(),
+        'most_common_countries': df[[col for col in df.columns if col.startswith('Country_')]].sum().nlargest(5).to_dict(),
         'paywalled_distribution': df['Paywalled'].value_counts().to_dict()
     }
 
@@ -112,6 +114,10 @@ def load_data():
 
 def predict_ui():
     st.subheader("Predict Days to Retraction")
+
+    global model
+    if model is None:
+        st.error("Model not trained. Please reload data.")
 
     # Define the list of valid subjects
     valid_subjects = [
