@@ -162,6 +162,8 @@ def predict_ui():
             st.error(f"Prediction failed: {e}")
 
 
+
+
 def viz_ui(df):
     st.subheader("Visualize Retraction Time")
 
@@ -175,20 +177,14 @@ def viz_ui(df):
     filtered = df[
         (df[selected_subjects].sum(axis=1) > 0) &
         (df[selected_countries].sum(axis=1) > 0)
-        ]
+    ]
     if paywall_option != "All":
         filtered = filtered[filtered["Paywalled"] == (1 if paywall_option == "Yes" else 0)]
 
     st.write(f"Filtered rows: {len(filtered)}")
 
-    plot_type = st.radio("Plot Type", ["Boxplot", "Histogram"])
-
     fig, ax = plt.subplots()
-    if plot_type == "Boxplot":
-        sns.boxplot(data=filtered, y="DaysToRetraction", ax=ax)
-    else:
-        sns.histplot(data=filtered, x="DaysToRetraction", bins=30, kde=True, ax=ax)
-
+    sns.histplot(data=filtered, x="DaysToRetraction", bins=30, kde=True, ax=ax)
     st.pyplot(fig)
 
 
