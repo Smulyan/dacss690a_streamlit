@@ -199,6 +199,6 @@ data = load_data()
 
 tab1, tab2 = st.tabs(["Prediction", "Visualization"])
 with tab1:
-    predict_ui(data)
+    predict_ui()
 with tab2:
     viz_ui(data)
